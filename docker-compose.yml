@@ -1,0 +1,26 @@
+services:
+  experiment:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["all"]
+    environment:
+      AIA_DATA_ROOT: /data/aia_scene_experiment
+      AIA_RUNS_ROOT: /runs
+      AIA_SCRATCH_ROOT: /scratch
+      AIA_PSF_CACHE_ROOT: /data/psfs
+      AIA_DECONVOLVED_CACHE_ROOT: /data/deconvolved_scenes
+      AIA_PSF_SOURCE: grigis_2012
+      AIA_DECONV_METHOD: aiapy_rl
+      AIA_RL_ITERATIONS: "25"
+      AIA_CLIP_NEGATIVE: "true"
+      AIA_RANDOM_SEED: "20260730"
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ${DATA_DIR:-./data}/aia_scene_experiment:/data/aia_scene_experiment:ro
+      - ${DATA_DIR:-./data}/psfs:/data/psfs
+      - ${DATA_DIR:-./data}/deconvolved_scenes:/data/deconvolved_scenes
+      - ./runs:/runs
+      - ./scratch:/scratch
+    mem_limit: 3g
+
