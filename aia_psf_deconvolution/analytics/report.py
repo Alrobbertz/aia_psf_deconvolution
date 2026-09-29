@@ -6,6 +6,7 @@ import pandas as pd
 
 from .aggregate import aggregate_strata, aggregate_treatments, load_results
 from .pareto import pareto_table, plot_pareto
+from .poisson_aggregate import aggregate_poisson_by_stratum
 
 
 def _markdown_table(frame: pd.DataFrame, columns: list[str]) -> str:
@@ -89,3 +90,65 @@ def analyze_run(run_dir: Path) -> dict[str, Path]:
         "plot": plot_path,
         "report": report_path,
     }
+
+
+def analyze_poisson_run(run_dir: Path) -> dict[str, Path]:
+    """Aggregate `poisson_results.jsonl` and write a headline markdown report.
+
+    Mirrors `analyze_run`, but for the Poisson noise experiment: a separate
+    results file, a `(scene_type, region, stage, metric)` stratum table, and
+    a headline comparing both Poisson metrics (`sqrt_dn` vs.
+    `aiapy_estimate_error`) side-by-side.
+    """
+    results = load_results(run_dir / "poisson_results.jsonl")
+    strata = aggregate_poisson_by_stratum(results)
+    analytics_dir = run_dir / "analytics"
+    analytics_dir.mkdir(parents=True, exist_ok=True)
+
+    strata_path = analytics_dir / "poisson_stratum_summary.csv"
+    report_path = analytics_dir / "poisson_report.md"
+    strata.to_csv(strata_path, index=False)
+
+    on_disk_after = strata[
+        (strata["region"] == "on_disk") & (strata["stage"] == "after")
+    ].sort_values(["metric", "scene_type"])
+    columns = ["scene_type", "metric", "mean_of_means", "mean_fraction_ge_0p5dn"]
+
+    headlines: list[str] = []
+    for metric_name, metric_group in on_disk_after.groupby("metric", sort=True):
+        detail = ", ".join(
+            f"{scene_type}: {fraction:.4g}"
+            for scene_type, fraction in zip(
+                metric_group["scene_type"],
+                metric_group["mean_fraction_ge_0p5dn"],
+                strict=True,
+            )
+        )
+        headlines.append(
+            f"- `{metric_name}` (on-disk, post-deconvolution): fraction of pixels "
+            f"with Poisson error >= 0.5 DN by scene_type -- {detail}"
+        )
+
+    report = "\n".join(
+        [
+            "# AIA Poisson Noise Report",
+            "",
+            "## Headline: fraction of pixels with Poisson error >= 0.5 DN",
+            "",
+            *headlines,
+            "",
+            "## On-Disk, Post-Deconvolution, by Scene Type and Metric",
+            "",
+            _markdown_table(on_disk_after, columns),
+            "",
+            "## Full Stratum Summary",
+            "",
+            _markdown_table(
+                strata.sort_values(["scene_type", "region", "stage", "metric"]),
+                ["scene_type", "region", "stage", "metric", *columns[2:]],
+            ),
+            "",
+        ]
+    )
+    report_path.write_text(report, encoding="utf-8")
+    return {"strata": strata_path, "report": report_path}

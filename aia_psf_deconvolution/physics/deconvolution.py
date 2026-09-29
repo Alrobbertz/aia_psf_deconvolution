@@ -8,6 +8,8 @@ import aiapy.psf
 import numpy as np
 import sunpy.map
 
+from .hofmeister_bid import deconvolve_bid
+
 
 def array_sha256(array: np.ndarray) -> str:
     contiguous = np.ascontiguousarray(array)
@@ -51,6 +53,67 @@ def deconvolve_to_reference(
     )
     elapsed = time.perf_counter() - started
     reference = np.ascontiguousarray(result_map.data, dtype=np.float64)
+    np.save(output_path, reference, allow_pickle=False)
+    return {
+        "reference_path": str(output_path),
+        "reference_sha256": array_sha256(reference),
+        "reference_dtype": str(reference.dtype),
+        "reference_bytes": int(reference.nbytes),
+        "deconvolution_seconds": elapsed,
+        "reference_cached": False,
+        "reference_min": float(np.min(reference)),
+        "reference_max": float(np.max(reference)),
+        "reference_nonfinite": int(reference.size - np.isfinite(reference).sum()),
+    }
+
+
+def deconvolve_to_reference_bid(
+    source_path: Path,
+    psf: np.ndarray,
+    output_path: Path,
+    iterations: int,
+    tolerance: float,
+    force_recompute: bool = False,
+) -> dict[str, object]:
+    """Same cache-hit/cache-miss contract as `deconvolve_to_reference`, but
+    using the Hofmeister et al. BID algorithm instead of aiapy's
+    Richardson-Lucy. Fixed method parameters (large_psf=True, pad=True,
+    estimate_background=True, constrain_positive=True) per the design doc.
+    """
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Cache-hit case: load existing reference if available and not forcing recompute
+    if not force_recompute and output_path.exists():
+        reference = np.load(output_path, mmap_mode="r")
+        reference = np.ascontiguousarray(reference, dtype=np.float64)
+        return {
+            "reference_path": str(output_path),
+            "reference_sha256": array_sha256(reference),
+            "reference_dtype": str(reference.dtype),
+            "reference_bytes": int(reference.nbytes),
+            "deconvolution_seconds": 0.0,
+            "reference_cached": True,
+            "reference_min": float(np.min(reference)),
+            "reference_max": float(np.max(reference)),
+            "reference_nonfinite": int(reference.size - np.isfinite(reference).sum()),
+        }
+
+    # Cache-miss case: compute deconvolution and save
+    source_map = sunpy.map.Map(source_path)
+    image = np.ascontiguousarray(source_map.data, dtype=np.float64)
+    started = time.perf_counter()
+    result = deconvolve_bid(
+        image,
+        psf,
+        iterations=iterations,
+        tolerance=tolerance,
+        large_psf=True,
+        pad=True,
+        estimate_background=True,
+        constrain_positive=True,
+    )
+    elapsed = time.perf_counter() - started
+    reference = np.ascontiguousarray(result, dtype=np.float64)
     np.save(output_path, reference, allow_pickle=False)
     return {
         "reference_path": str(output_path),

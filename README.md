@@ -34,4 +34,7 @@ docker compose run --rm experiment all --smoke
 - [File Size Experiment Reference](docs/file_size_experiment.md) -- experiment
   matrix, running the full pipeline, output/result formats, environment
   configuration, and troubleshooting
+- [Poisson Noise Experiment Reference](docs/poisson_noise_experiment.md) --
+  pixel-wise Poisson (shot-noise) error before/after Hofmeister/BID
+  deconvolution, via the `poisson-noise` subcommand
 

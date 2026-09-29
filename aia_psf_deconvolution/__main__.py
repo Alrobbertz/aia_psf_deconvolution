@@ -6,10 +6,15 @@ import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
-from aia_psf_deconvolution.analytics import analyze_run
+from aia_psf_deconvolution.analytics import analyze_poisson_run, analyze_run
 from aia_psf_deconvolution.config import TREATMENTS, Settings, select_treatments
 from aia_psf_deconvolution.dataio import augment_manifest
-from aia_psf_deconvolution.execution import run_sweep, stage_deconvolve
+from aia_psf_deconvolution.execution import (
+    run_sweep,
+    stage_deconvolve,
+    stage_deconvolve_bid,
+    stage_poisson_noise,
+)
 from aia_psf_deconvolution.execution.scratch import clear_scratch
 from aia_psf_deconvolution.results import ResultWriter
 
@@ -102,6 +107,64 @@ def _execute(args: argparse.Namespace) -> int:
         clear_scratch(settings.scratch_root)
 
 
+def _execute_poisson_noise(args: argparse.Namespace) -> int:
+    settings = Settings.from_env()
+    if (
+        settings.deconvolution_method != "bid"
+        or settings.psf_source != "hofmeister_2025"
+    ):
+        raise ValueError(
+            "poisson-noise requires AIA_DECONV_METHOD=bid and "
+            "AIA_PSF_SOURCE=hofmeister_2025 (got deconvolution_method="
+            f"{settings.deconvolution_method!r}, psf_source={settings.psf_source!r})"
+        )
+    scenes = _scene_ids(getattr(args, "scenes", None))
+    force_recompute = getattr(args, "force_recompute", False)
+    limit = 1 if args.smoke else args.limit
+    run_id, run_dir = settings.create_run_dir()
+    config_hash = settings.config_hash([])
+    writer = ResultWriter(run_dir / "poisson_results.jsonl", run_id, config_hash)
+    clear_scratch(settings.scratch_root)
+
+    metadata: dict[str, object] = {
+        "run_id": run_id,
+        "config_hash": config_hash,
+        "command": args.command,
+        "created_at": datetime.now(UTC).isoformat(),
+        "status": "running",
+        "settings": settings.as_serializable(),
+        "limit": limit,
+        "scenes": scenes,
+    }
+    metadata_path = _metadata_path(run_dir)
+    _write_metadata(metadata_path, metadata)
+    print(f"[run] {run_id} -> {run_dir}", flush=True)
+
+    try:
+        manifest = augment_manifest(
+            settings.data_root,
+            run_dir / "augmented_manifest.csv",
+            limit=limit,
+            scene_ids=scenes,
+        )
+        bid_references = stage_deconvolve_bid(
+            manifest, settings, run_dir, force_recompute=force_recompute
+        )
+        stage_poisson_noise(manifest, bid_references, run_dir, writer)
+        outputs = analyze_poisson_run(run_dir)
+        print(f"[analyze] report -> {outputs['report']}", flush=True)
+        metadata["status"] = "complete"
+        return 0
+    except Exception as exc:
+        metadata["status"] = "failed"
+        metadata["error"] = f"{type(exc).__name__}: {exc}"
+        raise
+    finally:
+        metadata["finished_at"] = datetime.now(UTC).isoformat()
+        _write_metadata(metadata_path, metadata)
+        clear_scratch(settings.scratch_root)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="aia-experiment", description="AIA FITS storage experiment"
@@ -125,6 +188,16 @@ def build_parser() -> argparse.ArgumentParser:
     analyze = subparsers.add_parser("analyze")
     analyze.add_argument("run_dir", type=Path)
     subparsers.add_parser("list-treatments")
+
+    poisson_noise = subparsers.add_parser("poisson-noise")
+    poisson_noise.add_argument("--limit", type=int)
+    poisson_noise.add_argument("--smoke", action="store_true")
+    poisson_noise.add_argument("--force-recompute", action="store_true")
+    poisson_noise.add_argument(
+        "--scenes",
+        nargs="+",
+        help="Scene IDs separated by spaces or commas",
+    )
     return parser
 
 
@@ -139,6 +212,8 @@ def main(argv: list[str] | None = None) -> int:
         for name, path in outputs.items():
             print(f"{name}: {path}")
         return 0
+    if args.command == "poisson-noise":
+        return _execute_poisson_noise(args)
     return _execute(args)
 
 
