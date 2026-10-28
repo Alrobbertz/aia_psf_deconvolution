@@ -37,4 +37,7 @@ docker compose run --rm experiment all --smoke
 - [Poisson Noise Experiment Reference](docs/poisson_noise_experiment.md) --
   pixel-wise Poisson (shot-noise) error before/after Hofmeister/BID
   deconvolution, via the `poisson-noise` subcommand
+- [PSF Weighting, Diffraction, and Scattering Comparison](docs/psf_weighting_comparison.md) --
+  Grigis (aiapy) vs. Hofmeister PSF radial profile, fraction of light beyond r,
+  and scene-dependent out-of-frame share, via the `psf-weighting` subcommand
 
