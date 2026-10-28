@@ -1,11 +1,19 @@
 """Pipeline stages and orchestration."""
 
 from .orchestrator import run_sweep
-from .stages import stage_deconvolve, stage_deconvolve_bid, stage_poisson_noise
+from .stages import (
+    stage_deconvolve,
+    stage_deconvolve_bid,
+    stage_poisson_noise,
+    stage_psf_weighting,
+    stage_scene_out_of_frame,
+)
 
 __all__ = [
     "run_sweep",
     "stage_deconvolve",
     "stage_deconvolve_bid",
     "stage_poisson_noise",
+    "stage_psf_weighting",
+    "stage_scene_out_of_frame",
 ]
