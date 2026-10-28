@@ -34,9 +34,7 @@ def psf_center(psf: np.ndarray) -> tuple[int, int]:
     expected = (psf.shape[0] // 2, psf.shape[1] // 2)
     peak = tuple(int(value) for value in np.unravel_index(np.argmax(psf), psf.shape))
     if peak != expected:
-        raise ValueError(
-            f"PSF maximum at {peak} is not at the array center {expected}"
-        )
+        raise ValueError(f"PSF maximum at {peak} is not at the array center {expected}")
     return expected
 
 
@@ -121,7 +119,9 @@ def profile_at_radius(
     hi = max(radius_px * 10.0**PROFILE_HALF_WIDTH_DEX, radius_px + 0.5)
     mask = (distance >= lo) & (distance < hi)
     count = int(mask.sum())
-    mean_weight = float(np.asarray(psf, dtype=np.float64)[mask].mean()) if count else float("nan")
+    mean_weight = (
+        float(np.asarray(psf, dtype=np.float64)[mask].mean()) if count else float("nan")
+    )
     return {
         "profile_r_lo_px": float(lo),
         "profile_r_hi_px": float(hi),
@@ -146,7 +146,14 @@ def embed_psf(psf: np.ndarray, shape: tuple[int, int]) -> np.ndarray:
 
 def _inscribed_radius(shape: tuple[int, int]) -> float:
     """Largest radius whose full circle lies inside the array (center at shape//2)."""
-    return float(min(shape[0] // 2, shape[1] // 2, shape[0] - shape[0] // 2 - 1, shape[1] - shape[1] // 2 - 1))
+    return float(
+        min(
+            shape[0] // 2,
+            shape[1] // 2,
+            shape[0] - shape[0] // 2 - 1,
+            shape[1] - shape[1] // 2 - 1,
+        )
+    )
 
 
 def _completeness(lo: float, hi: float, count: int, inner_radius: float) -> float:

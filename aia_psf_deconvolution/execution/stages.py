@@ -32,8 +32,8 @@ from aia_psf_deconvolution.physics.psf_metrics import (
     radial_profile,
     ring_weights,
 )
-from aia_psf_deconvolution.verification.out_of_frame import out_of_frame_metrics
 from aia_psf_deconvolution.results.writer import ResultWriter
+from aia_psf_deconvolution.verification.out_of_frame import out_of_frame_metrics
 from aia_psf_deconvolution.verification.poisson_noise import (
     aiapy_error_map,
     poisson_error_stats,
@@ -268,8 +268,16 @@ def stage_psf_weighting(
                     "psf_sha256": array_sha256(psf),
                 }
             )
-            for row in radial_profile(psf, distance, log_bin_edges(float(distance.max()))):
-                profile_rows.append({**key, **row, "mean_weight_normalized": row["mean_weight"] / psf_sum})
+            for row in radial_profile(
+                psf, distance, log_bin_edges(float(distance.max()))
+            ):
+                profile_rows.append(
+                    {
+                        **key,
+                        **row,
+                        "mean_weight_normalized": row["mean_weight"] / psf_sum,
+                    }
+                )
             curve_rows.extend(
                 {**key, "radius_px": k, "fraction_beyond": float(value)}
                 for k, value in enumerate(curve)
@@ -284,7 +292,8 @@ def stage_psf_weighting(
                         "fraction_threshold_px": threshold,
                         "fraction_beyond": fraction_beyond(curve, threshold),
                         **profile,
-                        "profile_mean_weight_normalized": profile["profile_mean_weight"] / psf_sum,
+                        "profile_mean_weight_normalized": profile["profile_mean_weight"]
+                        / psf_sum,
                     }
                 )
             del psf, distance, curve
@@ -314,7 +323,9 @@ def stage_scene_out_of_frame(
     ``status="failed"``.
     """
     groups = list(manifest.groupby("wavelength_angstrom", sort=True))
-    sources = [source for source in PSF_WEIGHTING_SOURCES if source in references_by_source]
+    sources = [
+        source for source in PSF_WEIGHTING_SOURCES if source in references_by_source
+    ]
     for w_index, (wavelength, group) in enumerate(groups, start=1):
         wavelength = int(wavelength)
         for psf_source in sources:
@@ -339,7 +350,9 @@ def stage_scene_out_of_frame(
                 }
                 try:
                     if row.image_id not in references.index:
-                        raise FileNotFoundError(f"no {psf_source} reference for {row.image_id}")
+                        raise FileNotFoundError(
+                            f"no {psf_source} reference for {row.image_id}"
+                        )
                     reference = references.loc[row.image_id]
                     scene = np.ascontiguousarray(
                         np.load(Path(reference["reference_path"]), mmap_mode="r"),

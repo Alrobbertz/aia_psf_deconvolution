@@ -218,7 +218,10 @@ def _execute_psf_weighting(args: argparse.Namespace) -> int:
 
     try:
         stage_psf_weighting(
-            settings, run_dir, PSF_WEIGHTING_WAVELENGTHS, force_recompute=force_recompute
+            settings,
+            run_dir,
+            PSF_WEIGHTING_WAVELENGTHS,
+            force_recompute=force_recompute,
         )
         if not args.psf_only:
             manifest = augment_manifest(
@@ -232,7 +235,10 @@ def _execute_psf_weighting(args: argparse.Namespace) -> int:
                     manifest, grigis_settings, run_dir, force_recompute=force_recompute
                 ),
                 "hofmeister_2025": stage_deconvolve_bid(
-                    manifest, hofmeister_settings, run_dir, force_recompute=force_recompute
+                    manifest,
+                    hofmeister_settings,
+                    run_dir,
+                    force_recompute=force_recompute,
                 ),
             }
             stage_scene_out_of_frame(manifest, references, settings, writer)

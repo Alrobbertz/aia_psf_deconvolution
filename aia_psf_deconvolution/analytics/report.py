@@ -212,7 +212,14 @@ def analyze_psf_weighting_run(run_dir: Path) -> dict[str, Path]:
     gates = checks[checks["kind"] == "gate"] if not checks.empty else checks
     failed_gates = gates[~gates["passed"]] if not gates.empty else gates
     indicative = checks[checks["kind"] == "indicative"] if not checks.empty else checks
-    check_columns = ["check", "psf_source", "wavelength_angstrom", "observed", "expected", "passed"]
+    check_columns = [
+        "check",
+        "psf_source",
+        "wavelength_angstrom",
+        "observed",
+        "expected",
+        "passed",
+    ]
 
     sections = [
         "# PSF Weighting, Diffraction, and Scattering Comparison Report",
@@ -223,7 +230,9 @@ def analyze_psf_weighting_run(run_dir: Path) -> dict[str, Path]:
         "",
         f"{len(gates) - len(failed_gates)} of {len(gates)} gates passed.",
         "",
-        _markdown_table(failed_gates, check_columns) if not failed_gates.empty else "No failed gates.",
+        _markdown_table(failed_gates, check_columns)
+        if not failed_gates.empty
+        else "No failed gates.",
         "",
         "## Goal 2: Fraction of Light Beyond r",
         "",
@@ -273,7 +282,11 @@ def analyze_psf_weighting_run(run_dir: Path) -> dict[str, Path]:
                     "scene_type",
                     "n_completed",
                     "n_failed",
-                    *[c for c in ("mean_share", "min_share", "max_share") if c in summary],
+                    *[
+                        c
+                        for c in ("mean_share", "min_share", "max_share")
+                        if c in summary
+                    ],
                 ],
             ),
             "",

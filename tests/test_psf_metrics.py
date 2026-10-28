@@ -86,7 +86,9 @@ def test_radial_profile_of_uniform_psf() -> None:
     psf = np.full((size, size), 1.0 / size**2)
     psf[size // 2, size // 2] *= 2  # make the center the unique maximum
     distance = distance_grid(psf.shape, psf_center(psf))
-    rows = radial_profile(psf, distance, log_bin_edges(float(distance.max()), per_decade=10))
+    rows = radial_profile(
+        psf, distance, log_bin_edges(float(distance.max()), per_decade=10)
+    )
     outer = [row for row in rows if row["r_lo_px"] > 1.0]
     assert outer
     assert all(row["mean_weight"] == pytest.approx(1.0 / size**2) for row in outer)
@@ -94,7 +96,9 @@ def test_radial_profile_of_uniform_psf() -> None:
     assert all(row["completeness"] == 1.0 for row in inscribed)
     assert rows[-1]["completeness"] < 1.0
     covered = sum(row["mean_weight"] * row["n_pixels"] for row in rows)
-    in_range = psf[(distance >= 0.5) & (distance < log_bin_edges(float(distance.max()), 10)[-1])].sum()
+    in_range = psf[
+        (distance >= 0.5) & (distance < log_bin_edges(float(distance.max()), 10)[-1])
+    ].sum()
     assert covered == pytest.approx(in_range)
 
 

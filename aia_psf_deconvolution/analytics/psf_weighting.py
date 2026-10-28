@@ -187,15 +187,21 @@ def aggregate_out_of_frame(results: pd.DataFrame) -> pd.DataFrame:
     )
     summary = counts.join(shares).reset_index()
     summary["scene_type"] = pd.Categorical(
-        summary["scene_type"], categories=_scene_order(summary["scene_type"]), ordered=True
+        summary["scene_type"],
+        categories=_scene_order(summary["scene_type"]),
+        ordered=True,
     )
     return summary.sort_values(keys).reset_index(drop=True)
 
 
-def plot_radial_profiles(profiles: pd.DataFrame, output_path: Path | None = None) -> Figure:
+def plot_radial_profiles(
+    profiles: pd.DataFrame, output_path: Path | None = None
+) -> Figure:
     """Goal 1: azimuthally averaged PSF weight per pixel vs distance."""
     fig, axes = _wavelength_grid(profiles)
-    for axis, (wavelength, group) in zip(axes, profiles.groupby("wavelength_angstrom"), strict=False):
+    for axis, (wavelength, group) in zip(
+        axes, profiles.groupby("wavelength_angstrom"), strict=False
+    ):
         for source, subset in group.groupby("psf_source"):
             subset = subset[subset["r_hi_px"] >= 1.0]
             axis.loglog(
@@ -236,10 +242,14 @@ def plot_cumulative_fraction(
     if r_max is not None:
         curves = curves[curves["radius_px"] <= r_max]
     fig, axes = _wavelength_grid(curves)
-    for axis, (wavelength, group) in zip(axes, curves.groupby("wavelength_angstrom"), strict=False):
+    for axis, (wavelength, group) in zip(
+        axes, curves.groupby("wavelength_angstrom"), strict=False
+    ):
         for source, subset in group.groupby("psf_source"):
             if scale == "log":
-                subset = subset[(subset["radius_px"] >= 1) & (subset["fraction_beyond"] > 0)]
+                subset = subset[
+                    (subset["radius_px"] >= 1) & (subset["fraction_beyond"] > 0)
+                ]
             axis.plot(
                 subset["radius_px"],
                 100.0 * subset["fraction_beyond"],
@@ -276,10 +286,14 @@ def plot_cumulative_fraction(
     return fig
 
 
-def plot_fraction_at_radii(table: pd.DataFrame, output_path: Path | None = None) -> Figure:
+def plot_fraction_at_radii(
+    table: pd.DataFrame, output_path: Path | None = None
+) -> Figure:
     """Grouped bars of the fraction beyond each standard radius, per wavelength."""
     radii = sorted(table["radius_px"].unique())
-    fig, axes = plt.subplots(1, len(radii), figsize=(3.2 * len(radii), 3.8), sharey=False)
+    fig, axes = plt.subplots(
+        1, len(radii), figsize=(3.2 * len(radii), 3.8), sharey=False
+    )
     axes = np.atleast_1d(axes)
     wavelengths = sorted(table["wavelength_angstrom"].unique())
     positions = np.arange(len(wavelengths))
@@ -325,7 +339,9 @@ def plot_out_of_frame(results: pd.DataFrame, output_path: Path | None = None) ->
             rows = source_rows[source_rows["scene_type"] == scene_type]
             if rows.empty:
                 continue
-            x = rows["wavelength_angstrom"].map({w: i for i, w in enumerate(wavelengths)})
+            x = rows["wavelength_angstrom"].map(
+                {w: i for i, w in enumerate(wavelengths)}
+            )
             jitter = (s_index - 0.5) * 0.3 + (
                 SCENE_TYPE_ORDER.index(scene_type) - 1.5
             ) * 0.05
@@ -363,7 +379,11 @@ def _wavelength_grid(frame: pd.DataFrame) -> tuple[Figure, list[plt.Axes]]:
     n_cols = min(4, n_panels)
     n_rows = int(np.ceil(n_panels / n_cols))
     fig, grid = plt.subplots(
-        n_rows, n_cols, figsize=(4.0 * n_cols, 3.4 * n_rows), sharex=True, sharey=True,
+        n_rows,
+        n_cols,
+        figsize=(4.0 * n_cols, 3.4 * n_rows),
+        sharex=True,
+        sharey=True,
         squeeze=False,
     )
     axes = list(grid.ravel())
@@ -381,7 +401,9 @@ def _frame_markers(
         (FRAME_DIAGONAL_PX, ":", "left", f"frame corner ({FRAME_DIAGONAL_PX:.0f} px)"),
     )
     for radius, style, align, label in markers:
-        if (r_max is not None and radius > r_max) or (r_min is not None and radius < r_min):
+        if (r_max is not None and radius > r_max) or (
+            r_min is not None and radius < r_min
+        ):
             continue
         axis.axvline(radius, color="0.4", ls=style, lw=0.8, label=label)
         axis.text(
@@ -398,7 +420,9 @@ def _frame_markers(
         )
 
 
-def _finish(fig: Figure, axes: list[plt.Axes], title: str, output_path: Path | None) -> None:
+def _finish(
+    fig: Figure, axes: list[plt.Axes], title: str, output_path: Path | None
+) -> None:
     handles, labels = axes[0].get_legend_handles_labels()
     fig.suptitle(title)
     fig.legend(handles, labels, loc="lower right", frameon=False)

@@ -8,7 +8,10 @@ import pandas as pd
 import pytest
 
 from aia_psf_deconvolution.analytics import analyze_psf_weighting_run
-from aia_psf_deconvolution.analytics.psf_weighting import comparison_table, validation_checks
+from aia_psf_deconvolution.analytics.psf_weighting import (
+    comparison_table,
+    validation_checks,
+)
 from aia_psf_deconvolution.config.settings import Settings
 from aia_psf_deconvolution.dataio import augment_manifest
 from aia_psf_deconvolution.execution.stages import (
@@ -32,7 +35,9 @@ def _gaussian_psf(size: int, sigma: float) -> np.ndarray:
 def fake_psfs(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "aia_psf_deconvolution.execution.stages.get_or_create_psf",
-        lambda cache_dir, wavelength, force_recompute=False: _gaussian_psf(SCENE_SIZE, 1.0),
+        lambda cache_dir, wavelength, force_recompute=False: _gaussian_psf(
+            SCENE_SIZE, 1.0
+        ),
     )
     monkeypatch.setattr(
         "aia_psf_deconvolution.execution.stages.get_or_create_hofmeister_psf",
@@ -57,7 +62,9 @@ def test_stage_psf_weighting_outputs(
 ) -> None:
     run_dir = tmp_path / "run"
     run_dir.mkdir()
-    outputs = stage_psf_weighting(_settings(tmp_path, synthetic_data_root), run_dir, [171, 193])
+    outputs = stage_psf_weighting(
+        _settings(tmp_path, synthetic_data_root), run_dir, [171, 193]
+    )
 
     for name in outputs:
         assert (run_dir / f"{name}.csv").is_file()
@@ -68,8 +75,13 @@ def test_stage_psf_weighting_outputs(
     assert np.allclose(metadata["psf_sum"], 1.0)
 
     curves = outputs["psf_cumulative_fraction"]
-    for (source, wavelength), group in table.groupby(["psf_source", "wavelength_angstrom"]):
-        curve = curves[(curves["psf_source"] == source) & (curves["wavelength_angstrom"] == wavelength)]
+    for (source, wavelength), group in table.groupby(
+        ["psf_source", "wavelength_angstrom"]
+    ):
+        curve = curves[
+            (curves["psf_source"] == source)
+            & (curves["wavelength_angstrom"] == wavelength)
+        ]
         lookup = curve.set_index("radius_px")["fraction_beyond"]
         for row in group.itertuples(index=False):
             expected = lookup.get(row.fraction_threshold_px, 0.0)
@@ -118,7 +130,9 @@ def test_stage_scene_out_of_frame_rows_and_report(
     assert failed[0]["failure_stage"] == "out_of_frame"
     completed = [row for row in rows if row["status"] == "completed"]
     by_source = {
-        source: np.mean([r["out_of_frame_share"] for r in completed if r["psf_source"] == source])
+        source: np.mean(
+            [r["out_of_frame_share"] for r in completed if r["psf_source"] == source]
+        )
         for source in ("grigis_2012", "hofmeister_2025")
     }
     assert 0.0 < by_source["grigis_2012"] < by_source["hofmeister_2025"]
